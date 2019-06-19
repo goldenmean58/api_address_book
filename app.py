@@ -1,4 +1,5 @@
 import sqlalchemy
+from flask_cors import CORS
 from model import session
 from model import School
 from model import Information
@@ -63,25 +64,33 @@ def updateRecord():
     QQ = request.form.get('QQ')
     wx = request.form.get('wx')
     email = request.form.get('email')
-    person = session.query(Person).filter(Person.cno == old_cno).first()
+
     home = session.query(Home).filter(Home.cno == old_cno).first()
-    information = session.query(Information).filter(Information.cno == old_cno).first()
-    school = session.query(School).filter(School.cno == old_cno).first()
     home.province = province
     home.address = address
     home.tele = tele
+    session.commit()
+
+    information = session.query(Information).filter(Information.cno == old_cno).first()
     information.pnum = pnum
     information.QQ = QQ
     information.wx = wx
     information.email = email
+    session.commit()
+
+    school = session.query(School).filter(School.cno == old_cno).first()
     school.sno = sno
     school.major = major
     school.grade = grade
     school.sd = sd
+    session.commit()
+
+    person = session.query(Person).filter(Person.cno == old_cno).first()
     person.cno = new_cno
-    person.name = name
+    person.NAME = name
     person.age = age
     person.sex = sex
+
     code = 0
     msg = ''
     try:
@@ -142,3 +151,6 @@ def getRecord():
     ret['code'] = 0
     ret['data'] = array
     return jsonify(ret)
+
+
+CORS(app, supports_credentials=True)
