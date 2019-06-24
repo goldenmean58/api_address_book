@@ -11,6 +11,24 @@ from flask import jsonify
 from pymysql import err
 app = Flask(__name__)
 
+def get_percent(table_name, field_name):
+    sql = f"SELECT `{field_name}`,number,concat( round( number / total * 100.00, 2 ), '%' ) percent FROM( SELECT * FROM (SELECT `{field_name}`,COUNT( 1 ) number FROM `{table_name}` GROUP BY `{field_name}` ) t1 INNER JOIN ( SELECT COUNT( 1 ) total FROM `{table_name}` ) t2 ON 1 = 1 ) t;"
+    try:
+        result = session.execute(sql)
+    except:
+        session.rollback()
+    percentList = result.fetchall() # [('计算机',5,'8.00%'), ...]
+    ret = []
+    for percent in percentList:
+        data = {
+            'name': percent[0],
+            'value': percent[1],
+        }
+        ret.append(data)
+    return ret
+
+print(get_percent('school', 'major'))
+
 def insert_data(name, cno, age, sex, sno, major, grade, sd, province, address, tele, pnum, QQ, wx, email):
     try:
         session.execute(f"call insert_data('{name}', {cno}, {age}, '{sex}', '{sno}', '{major}', '{grade}', '{sd}', '{province}', '{address}', '{tele}', '{pnum}', '{QQ}', '{wx}', '{email}');")
@@ -125,7 +143,10 @@ def deletePerson():
 def getRecord():
     ret={}
     array=[]
-    persons = session.query(Person).all()
+    page_index = request.form.get('page')
+    page_index = int(page_index)
+    page_size = 10
+    persons = session.query(Person).slice((page_index - 1) * page_size,page_index * page_size)
     for person in persons:
         info={}
         cno = person.cno
@@ -152,5 +173,24 @@ def getRecord():
     ret['data'] = array
     return jsonify(ret)
 
-
+@app.route('/getMajorPercent', methods=['POST'])
+def getMajorPercent():
+    return jsonify(get_percent('school', 'major'))
+@app.route('/getProvincePercent', methods=['POST'])
+def getProvincePercent():
+    return jsonify(get_percent('home', 'province'))
+@app.route('/getGradePercent', methods=['POST'])
+def getGradePercent():
+    return jsonify(get_percent('school', 'grade'))
+@app.route('/getSexPercent', methods=['POST'])
+def getSexPercent():
+    return jsonify(get_percent('person', 'sex'))
+@app.route('/getCount', methods=['POST'])
+def getCount():
+    count = session.query(Person).count()
+    ret = {
+        'code':0,
+        'count':count
+    }
+    return jsonify(ret)
 CORS(app, supports_credentials=True)
